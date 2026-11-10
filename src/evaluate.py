@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 
+from .ar import max_root_modulus
 from .models import (Climatology, LagAR, LinearTrend, SeasonalNaive,
                      TwoYearMean)
 
@@ -39,7 +40,8 @@ def rolling_origin(series, models, first_origin, last_origin, window=360, steps=
             for name, m in fitted.items():
                 if hasattr(m, "lags"):
                     fit_log.append(dict(fit_date=origin, method=name, n_lags=len(m.lags),
-                                        lags=m.lags, insample_rmse=m.insample_rmse))
+                                        lags=m.lags, insample_rmse=m.insample_rmse,
+                                        max_root=max_root_modulus(m.lags, m.params)))
         targets = series.loc[origin + MONTH: origin + steps * MONTH]
         for name, m in fitted.items():
             pred = m.forecast(history, steps)
@@ -74,7 +76,8 @@ def replay_original_protocol(series, years, normals_window=30):
                      for h, (d, t, p) in enumerate(zip(truth.index, truth, pred), start=1)]
             if name == "ar_original":
                 fits.append(dict(year=year, lags=m.lags, n_lags=len(m.lags),
-                                 adj_r2=m.res.rsquared_adj, insample_rmse=m.insample_rmse))
+                                 adj_r2=m.res.rsquared_adj, insample_rmse=m.insample_rmse,
+                                 max_root=max_root_modulus(m.lags, m.params)))
     return pd.DataFrame(rows), pd.DataFrame(fits)
 
 

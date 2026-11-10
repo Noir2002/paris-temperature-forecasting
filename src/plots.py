@@ -143,12 +143,12 @@ def fig_window_sweep(sweep, path):
     ar = sweep.xs("ar_original", level="method")
     a.semilogy(ar.index, ar["insample_rmse"], color=ORANGE, marker="o", mfc=SURFACE, ls=":",
                label="in-sample RMSE")
-    a.semilogy(ar.index, ar["RMSE"], color=ORANGE, marker="o", label="out-of-sample RMSE (h=1–4)")
+    a.semilogy(ar.index, ar["RMSE_h1"], color=ORANGE, marker="o", label="out-of-sample RMSE (h=1)")
     a.set_xticks(ar.index)
     _plain_log_ticks(a, [0.2, 0.5, 1, 2, 5, 10, 20, 50])
     a.set_xlabel("training window (years)")
     a.set_ylabel("°C (log scale)")
-    a.set_title("Original AR rule: in-sample vs out-of-sample")
+    a.set_title("Original AR rule: 1-step error, in vs out of sample")
     a.legend(fontsize=8)
     styles = {"ar_original": (ORANGE, "-", "o", "AR, original rule"),
               "ar_bic": (GRAY, "--", "D", "AR, BIC"),

@@ -95,6 +95,18 @@ def cv_select_lags(y, max_lag=12, n_folds=5, fold_len=12):
     return best
 
 
+def max_root_modulus(lags, params):
+    """Stability check of a fitted AR: largest |root| of
+    z**p - b_1 z**(p-1) - ... - b_p = 0  (p = max lag).
+    < 1: shocks die out (stable). > 1: recursive forecasts can explode."""
+    if not lags:
+        return 0.0
+    b = np.zeros(max(lags))
+    for k, coef in zip(lags, np.asarray(params)[1:]):
+        b[k - 1] = coef
+    return float(np.abs(np.roots(np.r_[1.0, -b])).max())
+
+
 def recursive_forecast(history, lags, params, steps):
     """Multi-step forecast: each prediction is fed back as an input for the next step."""
     h = list(np.asarray(history, dtype=float))

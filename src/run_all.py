@@ -97,14 +97,16 @@ def main():
 
     print("2/5 rolling-origin backtest, 30-year window (slowest step)")
     fc, fit_log = rolling_origin(series, MAIN_MODELS, FIRST_ORIGIN, LAST_ORIGIN, window=360)
-    fc.to_csv(RESULTS / "04_rolling_forecasts.csv.gz", index=False)
+    fc.to_csv(RESULTS / "04_rolling_forecasts.csv.gz", index=False,
+              compression={"method": "gzip", "mtime": 0})  # byte-identical reruns
     fit_log.to_csv(RESULTS / "04_rolling_fit_log.csv", index=False)
     roll = metrics(fc, by=("method", "h"))
     roll.to_csv(RESULTS / "04_rolling_metrics.csv")
     vs_clim = compare_to(fc, "climatology_30y")
     vs_clim.to_csv(RESULTS / "04_rolling_vs_climatology.csv", index=False)
     lag_summary = fit_log.groupby("method").agg(mean_n_lags=("n_lags", "mean"),
-                                                mean_insample_rmse=("insample_rmse", "mean"))
+                                                mean_insample_rmse=("insample_rmse", "mean"),
+                                                max_root_max=("max_root", "max"))
     lag_summary["oos_rmse_h1"] = roll.xs(1, level="h")["RMSE"]
     lag_summary["lags_at_2024_12"] = fit_log[fit_log["fit_date"] == "2024-12-01"] \
         .set_index("method")["lags"].astype(str)
@@ -132,6 +134,7 @@ def main():
     for years in [2, 5, 10, 20, 30]:
         f, log = rolling_origin(series, SWEEP_MODELS, FIRST_ORIGIN, LAST_ORIGIN, window=12 * years)
         m = metrics(f).join(log.groupby("method")[["insample_rmse", "n_lags"]].mean())
+        m["RMSE_h1"] = metrics(f[f["h"] == 1])["RMSE"]  # 1-step, comparable to in-sample
         sweep.append(m.assign(years=years).set_index("years", append=True))
     sweep = pd.concat(sweep).reorder_levels(["years", "method"]).sort_index()
     sweep.to_csv(RESULTS / "05_window_sweep.csv")
@@ -154,7 +157,10 @@ def main():
         f"\nLargest |AR forecast| in the replay: {worst['y_pred']:.1f} °C "
         f"(target {worst['target']:%Y-%m}, truth {worst['y_true']:.1f} °C).\n",
         "\nAR fits on 12 training rows, one per replayed year:\n",
-        md_table(rp_fits[["n_lags", "adj_r2", "insample_rmse"]].describe().round(3), 3),
+        md_table(rp_fits[["n_lags", "adj_r2", "insample_rmse", "max_root"]].describe().round(3), 3),
+        f"\nExplosive fits (max |root| > 1): {(rp_fits['max_root'] > 1).sum()} of {len(rp_fits)}; "
+        f"AR better than 30-year climatology in years: "
+        f"{', '.join(map(str, by_year.index[by_year['ar_original'] < by_year['climatology_30y']]))}.\n",
         "\n## 4. Rolling-origin backtest 2001-2026, 30-year window\n",
         "### MAE by horizon\n", md_table(roll["MAE"].unstack().round(3), 3),
         "\n### RMSE by horizon\n", md_table(roll["RMSE"].unstack().round(3), 3),
